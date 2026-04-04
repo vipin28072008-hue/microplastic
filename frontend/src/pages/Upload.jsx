@@ -33,7 +33,7 @@ export default function Upload({ onResult }) {
     const form = new FormData()
     form.append('image', file)
     try {
-      const res  = await fetch('/api/predict', { method: 'POST', body: form })
+      const res = await fetch('https://microplastic-sqhu.onrender.com/predict', { method: 'POST', body: form })
       const data = await res.json()
       onResult(data, preview)
       nav('/result')
