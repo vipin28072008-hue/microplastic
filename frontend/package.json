@@ -6,7 +6,7 @@
   "engines": { "node": "20.x" },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --force",
     "preview": "vite preview"
   },
   "dependencies": {
