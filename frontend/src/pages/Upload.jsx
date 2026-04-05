@@ -40,7 +40,7 @@ export default function Upload({ onResult }) {
       onResult(data, preview)
       nav('/result')
     } catch {
-      onResult({ error: 'Could not connect to the backend server.' }, preview)
+      onResult({ error: 'Could not connect to the backend server. The server may be waking up — wait 30 seconds and try again.' }, preview)
       nav('/result')
     }
   }
@@ -59,8 +59,9 @@ export default function Upload({ onResult }) {
         <h1 className="anim-1" style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', marginBottom: 6, letterSpacing: '-.5px' }}>
           Upload Water Sample
         </h1>
-        <p className="anim-2" style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>
-          Provide a macro-lens photograph of a water sample captured under cross-polarized light for accurate detection.
+        <p className="anim-2" style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 28, lineHeight: 1.65 }}>
+          Provide a macro-lens photograph of a water sample captured under cross-polarized illumination.
+          Birefringent particles appear bright against a dark background, enabling accurate detection.
         </p>
 
         {/* Drop zone */}
@@ -138,14 +139,22 @@ export default function Upload({ onResult }) {
           }}>{error}</div>
         )}
 
+        {/* Image requirements */}
         <div className="anim-4 card-sm" style={{ marginBottom: 24, fontSize: 13, color: 'var(--text2)', lineHeight: 1.65 }}>
-          <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6, fontSize: 13 }}>Capture requirements</div>
-          <ul style={{ paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <li>Cross-polarized illumination (birefringence visible)</li>
-            <li>Macro lens — particles should be clearly resolved</li>
-            <li>Sample placed on filter paper or glass slide</li>
-            <li>Stable lighting, minimal motion blur</li>
-          </ul>
+          <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 8, fontSize: 13 }}>Image capture requirements</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[
+              { icon: '🔬', text: 'Cross-polarized illumination — birefringent particles must be visible' },
+              { icon: '📐', text: 'Macro or microscope lens — particle details should be clearly resolved' },
+              { icon: '🧫', text: 'Sample on filter paper or glass slide for a clean background' },
+              { icon: '💡', text: 'Stable, even lighting with minimal motion blur or overexposure' },
+            ].map(r => (
+              <div key={r.text} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 14, flexShrink: 0 }}>{r.icon}</span>
+                <span>{r.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="anim-5" style={{ display: 'flex', gap: 10 }}>
