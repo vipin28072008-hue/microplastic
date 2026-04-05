@@ -1,55 +1,38 @@
-import { Link, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 export default function Navbar() {
-  const { pathname } = useLocation()
-
+  const nav = useNavigate()
   return (
     <nav style={{
-      position: 'sticky', top: 0, zIndex: 200,
-      background: 'rgba(13,15,20,0.92)',
-      backdropFilter: 'blur(12px)',
+      height: 56, display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', padding: '0 28px',
       borderBottom: '1px solid var(--border)',
-      height: 56,
-      display: 'flex', alignItems: 'center',
-      padding: '0 32px',
-      justifyContent: 'space-between',
+      background: 'var(--bg2)',
+      position: 'sticky', top: 0, zIndex: 100,
     }}>
-      <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div
+        onClick={() => nav('/')}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+      >
         <div style={{
-          width: 28, height: 28,
-          border: '1.5px solid var(--cyan)',
-          borderRadius: 6,
+          width: 30, height: 30, borderRadius: 8,
+          background: 'linear-gradient(135deg, #00d4aa, #0099ff)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--cyan)' }} />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0a0d10" strokeWidth="2.2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+            <path d="M12 8v4M12 12h4"/>
+          </svg>
         </div>
-        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', letterSpacing: '-.2px' }}>
-          MicroPlastic<span style={{ color: 'var(--cyan)' }}> Detector</span>
+        <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-.3px', color: 'var(--text)' }}>
+          MicroPlastic <span style={{ color: 'var(--cyan)' }}>Detector</span>
         </span>
-      </Link>
-
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        {[['/', 'Home'], ['/upload', 'Analyse']].map(([path, label]) => (
-          <Link key={path} to={path} style={{
-            textDecoration: 'none',
-            fontSize: 13, fontWeight: 500,
-            padding: '6px 14px', borderRadius: 'var(--radius)',
-            color: pathname === path ? 'var(--cyan)' : 'var(--text2)',
-            background: pathname === path ? 'var(--cyan-dim)' : 'transparent',
-            transition: 'all .15s',
-          }}>{label}</Link>
-        ))}
-        <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 8px' }} />
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '4px 10px', borderRadius: 99,
-          background: 'rgba(34,197,94,0.08)',
-          border: '1px solid rgba(34,197,94,0.2)',
-        }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', animation: 'blink 2s ease-in-out infinite' }} />
-          <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 500 }}>System Online</span>
-        </div>
       </div>
+
+      <button className="btn btn-ghost" onClick={() => nav('/upload')} style={{ fontSize: 13, padding: '7px 16px' }}>
+        Analyse Sample
+      </button>
     </nav>
   )
 }

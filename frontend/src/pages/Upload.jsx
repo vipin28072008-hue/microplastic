@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+const API = 'https://microplastic-sqhu.onrender.com'
+
 export default function Upload({ onResult }) {
   const [drag, setDrag]       = useState(false)
   const [file, setFile]       = useState(null)
@@ -33,12 +35,12 @@ export default function Upload({ onResult }) {
     const form = new FormData()
     form.append('image', file)
     try {
-      const res = await fetch('https://microplastic-sqhu.onrender.com/predict', { method: 'POST', body: form })
+      const res  = await fetch(`${API}/api/predict`, { method: 'POST', body: form })
       const data = await res.json()
       onResult(data, preview)
       nav('/result')
     } catch {
-      onResult({ error: 'Could not connect to the backend. Make sure Flask is running on port 5000.' }, preview)
+      onResult({ error: 'Could not connect to the backend server.' }, preview)
       nav('/result')
     }
   }
@@ -81,7 +83,6 @@ export default function Upload({ onResult }) {
           {preview ? (
             <div style={{ position: 'relative' }}>
               <img src={preview} alt="preview" style={{ width: '100%', maxHeight: 280, objectFit: 'cover', display: 'block' }} />
-              {/* Overlay */}
               <div style={{
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(to top, rgba(13,15,20,.85) 0%, transparent 50%)',
@@ -95,12 +96,9 @@ export default function Upload({ onResult }) {
                 onClick={e => { e.stopPropagation(); setFile(null); setPreview(null) }}
                 style={{
                   position: 'absolute', top: 10, right: 10,
-                  background: 'rgba(13,15,20,.8)',
-                  border: '1px solid var(--border2)',
-                  color: 'var(--text2)',
-                  borderRadius: 6, padding: '4px 10px',
-                  fontSize: 12, cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
+                  background: 'rgba(13,15,20,.8)', border: '1px solid var(--border2)',
+                  color: 'var(--text2)', borderRadius: 6, padding: '4px 10px',
+                  fontSize: 12, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                 }}
               >Remove</button>
             </div>
@@ -110,8 +108,7 @@ export default function Upload({ onResult }) {
                 width: 48, height: 48, borderRadius: 12,
                 border: '1.5px solid var(--border2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px',
-                background: 'var(--card2)',
+                margin: '0 auto 16px', background: 'var(--card2)',
               }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="1.5">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -123,12 +120,10 @@ export default function Upload({ onResult }) {
                 {drag ? 'Release to upload' : 'Drag and drop image here'}
               </div>
               <div style={{ color: 'var(--text3)', fontSize: 13, marginBottom: 18 }}>or</div>
-              <button className="btn btn-ghost" onClick={() => inputRef.current.click()} style={{ fontSize: 13 }}>
+              <button className="btn btn-ghost" onClick={e => { e.stopPropagation(); inputRef.current.click() }} style={{ fontSize: 13 }}>
                 Browse Files
               </button>
-              <div style={{ color: 'var(--text3)', fontSize: 12, marginTop: 14 }}>
-                JPG, PNG — max 20 MB
-              </div>
+              <div style={{ color: 'var(--text3)', fontSize: 12, marginTop: 14 }}>JPG, PNG — max 20 MB</div>
             </div>
           )}
         </div>
@@ -143,7 +138,6 @@ export default function Upload({ onResult }) {
           }}>{error}</div>
         )}
 
-        {/* Spec note */}
         <div className="anim-4 card-sm" style={{ marginBottom: 24, fontSize: 13, color: 'var(--text2)', lineHeight: 1.65 }}>
           <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6, fontSize: 13 }}>Capture requirements</div>
           <ul style={{ paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -154,11 +148,8 @@ export default function Upload({ onResult }) {
           </ul>
         </div>
 
-        {/* Actions */}
         <div className="anim-5" style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-ghost" onClick={() => nav('/')} style={{ flex: '0 0 auto' }}>
-            Back
-          </button>
+          <button className="btn btn-ghost" onClick={() => nav('/')} style={{ flex: '0 0 auto' }}>Back</button>
           <button className="btn btn-primary" onClick={submit} disabled={!file || loading} style={{ flex: 1, fontSize: 15 }}>
             {loading ? 'Submitting…' : 'Analyse Sample'}
           </button>
