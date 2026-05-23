@@ -35,12 +35,22 @@ export default function Upload({ onResult }) {
     const form = new FormData()
     form.append('image', file)
     try {
-      const res  = await fetch(`${API}/api/predict`, { method: 'POST', body: form })
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 180000) // 3 minutes
+      const res  = await fetch(`${API}/api/predict`, {
+        method: 'POST',
+        body: form,
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
       const data = await res.json()
       onResult(data, preview)
       nav('/result')
-    } catch {
-      onResult({ error: 'Could not connect to the backend server. The server may be waking up — wait 30 seconds and try again.' }, preview)
+    } catch (err) {
+      const msg = err.name === 'AbortError'
+        ? 'Request timed out. The server is under heavy load — please try again.'
+        : 'Could not connect to the backend server. The server may be waking up — wait 30 seconds and try again.'
+      onResult({ error: msg }, preview)
       nav('/result')
     }
   }

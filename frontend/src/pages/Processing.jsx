@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 const STEPS = [
   { label: 'Uploading image to server…',           pct: 15 },
@@ -11,20 +10,13 @@ const STEPS = [
 ]
 
 export default function Processing() {
-  const nav = useNavigate()
   const [stepIdx, setStepIdx] = useState(0)
   const [pct, setPct] = useState(0)
 
-  useEffect(() => {
-    // safety redirect if user lands here directly (no result ever comes)
-    const bail = setTimeout(() => nav('/'), 60000)
-    return () => clearTimeout(bail)
-  }, [nav])
-
-  // Animate through the step labels
+  // Animate through the step labels — NO bail-out redirect
   useEffect(() => {
     if (stepIdx >= STEPS.length - 1) return
-    const t = setTimeout(() => setStepIdx(i => i + 1), 900)
+    const t = setTimeout(() => setStepIdx(i => i + 1), 1800)
     return () => clearTimeout(t)
   }, [stepIdx])
 
@@ -63,7 +55,7 @@ export default function Processing() {
           Analysing Sample
         </div>
         <div style={{ color: 'var(--text2)', fontSize: 14, maxWidth: 320 }}>
-          Running computer vision pipeline. Please wait…
+          Running AI pipeline. This may take up to 2 minutes — please keep this tab open…
         </div>
       </div>
 
@@ -90,7 +82,6 @@ export default function Processing() {
         {STEPS.map((s, i) => {
           const done    = i < stepIdx
           const active  = i === stepIdx
-          const pending = i > stepIdx
           return (
             <div key={s.label} style={{
               display: 'flex', alignItems: 'center', gap: 12,
@@ -100,7 +91,6 @@ export default function Processing() {
               fontSize: 13,
               color: done ? 'var(--text3)' : active ? 'var(--text)' : 'var(--text3)',
               transition: 'all .3s ease',
-              animation: `fadeUp .3s ${i * 0.08}s ease both`,
             }}>
               <div style={{
                 width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
@@ -108,11 +98,11 @@ export default function Processing() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 animation: active ? 'pulse 1.2s ease-in-out infinite' : 'none',
               }}>
-                {done ? (
+                {done && (
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" strokeWidth="3">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
-                ) : active ? null : null}
+                )}
               </div>
               <span style={{ textDecoration: done ? 'line-through' : 'none' }}>{s.label}</span>
             </div>
@@ -121,7 +111,6 @@ export default function Processing() {
       </div>
       <style>{`
         @keyframes pulse { 0%,100%{opacity:.4;transform:scale(.9)} 50%{opacity:1;transform:scale(1.1)} }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
     </div>
   )
