@@ -4,4 +4,3 @@ opencv-python-headless==4.10.0.84
 numpy==2.2.4
 pillow==11.2.1
 gunicorn==23.0.0
-tensorflow-cpu==2.18.0
