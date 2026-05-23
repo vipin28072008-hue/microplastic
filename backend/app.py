@@ -6,17 +6,39 @@ import base64
 import io
 import os
 from PIL import Image
+import tensorflow as tf
 
 app = Flask(__name__)
 CORS(app)
 
+# ── Load CNN Models at startup ─────────────────────────────────────────
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+detection_model = tf.keras.models.load_model(
+    os.path.join(BASE_DIR, 'microplastic_detection_model.h5')
+)
+polymer_model = tf.keras.models.load_model(
+    os.path.join(BASE_DIR, 'microplastic_polymer_model.h5')
+)
+
 # ── Constants ─────────────────────────────────────────────────────────
 PLASTIC_TYPES = {
-    'PE':  {'name': 'Polyethylene',               'source': 'Packaging films, bottles, bags'},
-    'PP':  {'name': 'Polypropylene',               'source': 'Textiles, packaging, containers'},
-    'PET': {'name': 'Polyethylene Terephthalate',  'source': 'Beverage bottles, food packaging'},
-    'PS':  {'name': 'Polystyrene',                 'source': 'Foam products, disposable cutlery'},
+    'PE':  {'name': 'Polyethylene',              'source': 'Packaging films, bottles, bags'},
+    'PP':  {'name': 'Polypropylene',              'source': 'Textiles, packaging, containers'},
+    'PET': {'name': 'Polyethylene Terephthalate', 'source': 'Beverage bottles, food packaging'},
+    'PS':  {'name': 'Polystyrene',                'source': 'Foam products, disposable cutlery'},
 }
+POLYMER_LABELS = ['PE', 'PP', 'PET', 'PS']
+
+# ── Helper: prepare a 64x64 patch for the CNN ─────────────────────────
+def prepare_patch(img_bgr, bbox):
+    x, y, bw, bh = bbox
+    patch = img_bgr[y:y+bh, x:x+bw]
+    if patch.size == 0:
+        patch = img_bgr
+    patch_rgb = cv2.cvtColor(patch, cv2.COLOR_BGR2RGB)
+    patch_resized = cv2.resize(patch_rgb, (64, 64))
+    patch_norm = patch_resized.astype(np.float32) / 255.0
+    return np.expand_dims(patch_norm, axis=0)  # shape: (1, 64, 64, 3)
 
 # ── OpenCV Analysis ───────────────────────────────────────────────────
 def analyze_image(img_bgr):
@@ -44,9 +66,9 @@ def analyze_image(img_bgr):
         area = cv2.contourArea(cnt)
         if 4 < area < 3000:
             x, y, bw, bh = cv2.boundingRect(cnt)
-            perimeter     = cv2.arcLength(cnt, True)
-            circularity   = 4 * np.pi * area / (perimeter ** 2) if perimeter > 0 else 0
-            aspect        = bw / bh if bh > 0 else 1
+            perimeter   = cv2.arcLength(cnt, True)
+            circularity = 4 * np.pi * area / (perimeter ** 2) if perimeter > 0 else 0
+            aspect      = bw / bh if bh > 0 else 1
             particles.append({
                 'area':         int(area),
                 'bbox':         (x, y, bw, bh),
@@ -58,37 +80,36 @@ def analyze_image(img_bgr):
     return particles, int(plastic_area), total_area, (cx, cy, r)
 
 
-def classify_polymer(particles):
+# ── CNN-based Detection + Classification ─────────────────────────────
+def cnn_detect_and_classify(img_bgr, particles):
     """
-    Morphology-based polymer classification.
-    Scientifically grounded: Saur et al. (2025), Li et al. (2024).
-    PE  = high circularity (sphere-like)
-    PET = high aspect ratio (fiber-like)
-    PS  = low circularity + angular
-    PP  = irregular mid-range fragments
+    Uses the detection CNN to confirm each particle is real microplastic.
+    Uses the polymer CNN on the largest confirmed particle to classify type.
+    Returns: (confirmed_particles, polymer_type, confidence)
     """
     if not particles:
-        return 'PE', 85.2
+        return [], 'PE', 0.0
 
-    avg_circ = float(np.mean([p['circularity']  for p in particles]))
-    avg_asp  = float(np.mean([p['aspect_ratio'] for p in particles]))
-    avg_area = float(np.mean([p['area']         for p in particles]))
+    confirmed = []
+    for p in particles:
+        patch = prepare_patch(img_bgr, p['bbox'])
+        score = float(detection_model.predict(patch, verbose=0)[0][0])
+        if score >= 0.5:  # sigmoid output: >= 0.5 means microplastic
+            p['cnn_score'] = round(score, 3)
+            confirmed.append(p)
 
-    # Confidence derived from how strongly the particle matches the type
-    if avg_circ > 0.72:
-        ptype = 'PE'
-        conf  = round(70 + avg_circ * 20, 1)
-    elif avg_asp > 2.5:
-        ptype = 'PET'
-        conf  = round(65 + min(avg_asp * 5, 25), 1)
-    elif avg_circ < 0.35:
-        ptype = 'PS'
-        conf  = round(68 + (0.35 - avg_circ) * 40, 1)
-    else:
-        ptype = 'PP'
-        conf  = round(72 + avg_area * 0.003, 1)
+    if not confirmed:
+        return [], 'PE', 0.0
 
-    return ptype, round(min(conf, 94.9), 1)
+    # Run polymer classification on the largest confirmed particle
+    largest = max(confirmed, key=lambda p: p['area'])
+    patch = prepare_patch(img_bgr, largest['bbox'])
+    probs = polymer_model.predict(patch, verbose=0)[0]  # shape: (4,)
+    idx   = int(np.argmax(probs))
+    ptype = POLYMER_LABELS[idx]
+    conf  = round(float(probs[idx]) * 100, 1)
+
+    return confirmed, ptype, conf
 
 
 def draw_annotated(img_bgr, particles, cx, cy, r):
@@ -111,7 +132,7 @@ def img_to_b64(img_rgb):
 # ── Routes ────────────────────────────────────────────────────────────
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok', 'version': '2.0', 'model': 'opencv+morphology'})
+    return jsonify({'status': 'ok', 'version': '3.0', 'model': 'opencv+cnn'})
 
 
 @app.route('/api/predict', methods=['POST'])
@@ -127,17 +148,20 @@ def predict():
 
         img = cv2.resize(img, (563, 537))
 
+        # Step 1: OpenCV finds candidate particles
         particles, plastic_area, total_area, (cx, cy, r) = analyze_image(img)
 
-        detected   = len(particles) > 3
-        ptype, conf = classify_polymer(particles) if detected else ('PE', 0.0)
-        percentage  = round(min((plastic_area / total_area) * 100 * 6, 100), 2)
+        # Step 2: CNN confirms particles and classifies polymer
+        confirmed, ptype, conf = cnn_detect_and_classify(img, particles)
+
+        detected   = len(confirmed) > 0
+        percentage = round(min((plastic_area / total_area) * 100 * 6, 100), 2) if detected else 0.0
 
         if   percentage < 10: risk, risk_hex = 'Low',    '#22c55e'
         elif percentage < 30: risk, risk_hex = 'Medium', '#f59e0b'
         else:                 risk, risk_hex = 'High',   '#ef4444'
 
-        ann_rgb = cv2.cvtColor(draw_annotated(img, particles, cx, cy, r), cv2.COLOR_BGR2RGB)
+        ann_rgb = cv2.cvtColor(draw_annotated(img, confirmed, cx, cy, r), cv2.COLOR_BGR2RGB)
 
         return jsonify({
             'detected':        detected,
@@ -145,15 +169,15 @@ def predict():
             'percentage':      percentage,
             'plastic_area_px': plastic_area,
             'total_area_px':   total_area,
-            'particle_count':  len(particles),
-            'plastic_type':    ptype,
-            'plastic_name':    PLASTIC_TYPES[ptype]['name'],
-            'plastic_source':  PLASTIC_TYPES[ptype]['source'],
+            'particle_count':  len(confirmed),
+            'plastic_type':    ptype if detected else 'PE',
+            'plastic_name':    PLASTIC_TYPES[ptype]['name'] if detected else '',
+            'plastic_source':  PLASTIC_TYPES[ptype]['source'] if detected else '',
             'confidence':      conf,
             'risk_level':      risk,
             'risk_hex':        risk_hex,
             'annotated_image': img_to_b64(ann_rgb),
-            'model_status':    'opencv_morphology',
+            'model_status':    'opencv+cnn',
         })
 
     except Exception as e:
